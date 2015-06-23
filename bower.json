@@ -1,9 +1,9 @@
 {
-  "name": "datatables-customsearch",
-  "version": "0.9.0",
-  "homepage": "https://github.com/ruhley/DataTables-CustomSearch",
+  "name": "hackolein-datatables-customsearch",
+  "version": "0.9.1",
+  "homepage": "https://github.com/hackolein/DataTables-CustomSearch",
   "authors": [
-    "ruhley <timothy.ruhle@gmail.com>"
+    "hackolein"
   ],
   "description": "Advanced DataTables searching",
   "main": "jquery.datatables.customsearch.min.js",
@@ -22,6 +22,7 @@
     "tests"
   ],
   "dependencies": {
-    "datatables": "~1.10.4"
+    "datatables": "~1.10.*",
+    "moment": "2.*"
   }
 }

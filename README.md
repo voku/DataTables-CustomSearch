@@ -95,7 +95,7 @@ Default: Column Header (if a range then a concat of the column headers).
 
 Optional
 
-Accepts: string (plain text or html)
+Accepts: string (plain text or html) or an object ```{ min: 'Updated von', max: 'bis' }```if date range 
 
 Requirements: none
 
@@ -109,7 +109,7 @@ Optional
 
 Accepts: ```'string', 'number', 'select', 'date', 'switch'```
 
-Requirements: none
+Requirements: [moment.js](http://momentjs.com/) for date
 
 This specifies the type of field to create, and affects how it is searched. A switch is good for boolean fields.
 
@@ -125,6 +125,16 @@ Requirements: type is number or date
 
 This will create a min and/or max field that the column values will have to be between.
 
+####dateFormat
+Default: ```{ cell: 'YYYY-MM-DD', input: 'YYYY-MM-DD' }```
+
+Optional
+
+Accepts: ```{ cell: 'dateFormatString', input: 'dateFormatString' }```
+
+[Date format strings](http://momentjs.com/docs/#/parsing/string-format/) accepted from moment.js
+
+This will converts the date.
 
 ####advanced
 Default: false

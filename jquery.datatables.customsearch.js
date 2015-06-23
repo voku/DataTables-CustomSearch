@@ -110,6 +110,7 @@
 					field.type            = this.getType(field.type, field.columns);
 					field.dataType        = this.getDataType(field.columns);
 					field.range           = this.getRange(field.range);
+					field.dateFormat      = this.getDateFormat(field.dateFormat);
 					field.slider          = field.slider === true && this.hasRange('min', field.range) && this.hasRange('max', field.range);
 					field.label           = this.getLabel(field.label, field.range, field.columns, field.slider);
 					field.id              = this.getId(i, field.range, field.field, field.slider);
@@ -148,7 +149,7 @@
 						row.find('th').eq(this.c.fields[i].columns[0]).append(this.c.fields[i].field);
 					}
 				} else if (this.c.container === 'thead:before' || this.c.container === 'thead:after' ||
-						this.c.container === 'tfoot:before' || this.c.container === 'tfoot:after') {
+					this.c.container === 'tfoot:before' || this.c.container === 'tfoot:after') {
 					type = this.c.container.indexOf('thead') >= 0 ? 'thead' : 'tfoot';
 					element = this.s.table.find(type);
 					currentColumn = 0;
@@ -330,7 +331,7 @@
 
 							if (field.type === 'date' && !advancedValue) {
 								for (j = 0; j < field.columns.length; j++) {
-									if (this.searchDate(data[field.columns[j]], value)) {
+									if (this.searchDate(data[field.columns[j]], value, field.dateFormat)) {
 										pass = true;
 										break;
 									}
@@ -375,7 +376,7 @@
 							pass = false;
 							for (j = 0; j < field.columns.length; j++) {
 								if (field.type === 'date') {
-									if (this.searchDateRange(data[field.columns[j]], values)) {
+									if (this.searchDateRange(data[field.columns[j]], values, field.dateFormat)) {
 										pass = true;
 										break;
 									}
@@ -470,36 +471,51 @@
 				);
 			},
 
-			searchDate: function (cell, value) {
-				cell = new Date(cell);
-				value = new Date(value);
+			searchDate: function (cell, value, dateFormat) {
+				cell = moment(cell, dateFormat.cell);
+				value = moment(cell, dateFormat.input)
 
-				return (this.isValidDate(cell) && cell.getDate() === value.getDate());
-			},
-
-			searchDateRange: function (cell, values) {
-				cell = new Date(cell);
-				values.min = new Date(values.min);
-				values.max = new Date(values.max);
-
-				if (!this.isValidDate(cell)) {
+				if (cell.isValid() === false && value.isValid() === false) {
 					return false;
 				}
 
-				return (
-					(!this.isValidDate(values.min) && !this.isValidDate(values.max)) ||
-					(!this.isValidDate(values.min) && values.max.getDate() >= cell.getDate()) ||
-					(values.min.getDate() <= cell.getDate()            && !this.isValidDate(values.max)) ||
-					(values.min.getDate() <= cell.getDate()            && values.max.getDate() >= cell.getDate())
-				);
+				return cell.isSame(value);
 			},
 
+			searchDateRange: function (cell, values, dateFormat) {
 
-			isValidDate: function (date) {
-				return Object.prototype.toString.call(date) === '[object Date]' && !isNaN(date.getTime());
+				cell = moment(cell, dateFormat.cell);
+
+				if (cell.isValid() === false) {
+					return false;
+				}
+
+				if (values.min != '' && values.max != '') {
+					values.min = moment(values.min, dateFormat.cell);
+					values.max = moment(values.max, dateFormat.cell);
+					if (values.min.isValid() === true && values.max.isValid() === true) {
+						return (
+							(!values.min.isAfter(values.max))
+							&& ((cell.isBetween(cell.isAfter(values.min), values.max) || cell.isSame(values.min))
+							|| (cell.isBetween(values.min, values.max) || cell.isSame(values.max)))
+						);
+					}
+				}
+
+				if(values.min != '' ) {
+					values.min = moment(values.min, dateFormat.cell);
+					if(values.min.isValid() === true  ) {
+						return (cell.isAfter(values.min) || cell.isSame(values.min));
+					}
+				}
+
+				if(values.max != '' ) {
+					values.max = moment(values.max, dateFormat.cell);
+					if(values.max.isValid() === true  ) {
+						return (cell.isBefore(values.max) || cell.isSame(values.max));
+					}
+				}
 			},
-
-
 
 			getRange: function (range) {
 				var newRange = [],
@@ -536,6 +552,26 @@
 				return newRange;
 			},
 
+			getDateFormat: function(dateFormat) {
+				var newDateFormat = {
+					cell: 'YYYY-MM-DD',
+					input: 'YYYY-MM-DD'
+				};
+
+				if (dateFormat !== null && typeof dateFormat != 'undefined' && typeof dateFormat === 'object') {
+					if (dateFormat.hasOwnProperty('cell') === true) {
+						newDateFormat.cell = dateFormat.cell;
+					}
+
+					if (dateFormat.hasOwnProperty('input') === true
+					) {
+						newDateFormat.input = dateFormat.input;
+					}
+				}
+
+				return newDateFormat;
+			},
+
 			getField: function (field) {
 				var newField = $(field.field);
 
@@ -554,101 +590,101 @@
 				field.field = [];
 
 				switch (field.type) {
-				case 'string':
-					if (field.label) {
-						field.fieldLabel = '<label for="' + field.id + '">' + field.label + '</label>';
-					}
-					field.field = field.advanced.field + '<input type="text" id="' + field.id + '">';
-					break;
+					case 'string':
+						if (field.label) {
+							field.fieldLabel = '<label for="' + field.id + '">' + field.label + '</label>';
+						}
+						field.field = field.advanced.field + '<input type="text" id="' + field.id + '">';
+						break;
 
-				case 'number':
-				case 'date':
-					if (field.range.length === 0) {
+					case 'number':
+					case 'date':
+						if (field.range.length === 0) {
+							if (field.label) {
+								field.fieldLabel = '<label for="' + field.id + '">' + field.label + '</label>';
+							}
+
+							field.field = field.advanced.field + '<input type="' + field.type + '" id="' + field.id + '">';
+						} else {
+							if (field.slider) {
+								field.fieldLabel = '<label for="' + field.id + '">' + field.label + '</label>';
+								field.field = field.advanced.field + '<div id="' + field.id + '"></div><div id="' + field.id + '_display"></div>';
+							} else {
+								if (this.hasRange('min', field.range)) {
+									if (field.label) {
+										field.fieldLabel.push('<label for="' + field.id.min + '">' + field.label.min + '</label>');
+									}
+									field.field.push('<input type="' + field.type + '" id="' + field.id.min + '">');
+								}
+
+								if (this.hasRange('max', field.range)) {
+									if (field.label) {
+										field.fieldLabel.push('<label for="' + field.id.max + '">' + field.label.max + '</label>');
+									}
+									field.field.push('<input type="' + field.type + '" id="' + field.id.max + '">');
+								}
+							}
+						}
+						break;
+
+					case 'select':
 						if (field.label) {
 							field.fieldLabel = '<label for="' + field.id + '">' + field.label + '</label>';
 						}
 
-						field.field = field.advanced.field + '<input type="' + field.type + '" id="' + field.id + '">';
-					} else {
-						if (field.slider) {
-							field.fieldLabel = '<label for="' + field.id + '">' + field.label + '</label>';
-							field.field = field.advanced.field + '<div id="' + field.id + '"></div><div id="' + field.id + '_display"></div>';
-						} else {
-							if (this.hasRange('min', field.range)) {
-								if (field.label) {
-									field.fieldLabel.push('<label for="' + field.id.min + '">' + field.label.min + '</label>');
-								}
-								field.field.push('<input type="' + field.type + '" id="' + field.id.min + '">');
+						if (!$.isArray(field.options) || field.options.length === 0) {
+							field.options = this.getDistinctValuesInColumn(field.columns, field.dataType, true);
+						}
+
+						field.field = field.advanced.field + '<select id="' + field.id + '"';
+
+						if (field.multiple) {
+							field.field += ' multiple="multiple"';
+						}
+
+						field.field += '>';
+
+						if (!field.multiple) {
+							field.options.unshift({
+								value: '',
+								text: field.chosen ? '' : 'All'
+							});
+						}
+
+						for (i = 0; i < field.options.length; i++) {
+							if (typeof field.options[i] === 'object') {
+								field.field += '<option value="' + field.options[i].value + '">' + field.options[i].text + '</option>';
+							} else {
+								field.field += '<option value="' + field.options[i] + '">' + field.options[i] + '</option>';
 							}
+						}
 
-							if (this.hasRange('max', field.range)) {
-								if (field.label) {
-									field.fieldLabel.push('<label for="' + field.id.max + '">' + field.label.max + '</label>');
-								}
-								field.field.push('<input type="' + field.type + '" id="' + field.id.max + '">');
+						field.field += '</select>';
+						break;
+
+					case 'switch':
+						if (!$.isArray(field.options) || field.options.length === 0) {
+							field.options = this.getDistinctValuesInColumn(field.columns, field.dataType, true);
+						}
+
+						for (i = 0; i < field.options.length; i++) {
+							if (typeof field.options[i] === 'object') {
+								field.field.push('<input type="checkbox" id="' + field.id + '_' + i + '" name="' + field.id + '"' + field.options[i].value + '>');
+								field.field.push('<label for="' + field.id + '_' + i + '">' + field.options[i].text + '</label>');
+							} else {
+								field.field.push('<input type="checkbox" id="' + field.id + '_' + i + '" name="' + field.id + '" value="' + field.options[i] + '">');
+								field.field.push('<label for="' + field.id + '_' + i + '">' + field.options[i] + '</label>');
 							}
 						}
-					}
-					break;
 
-				case 'select':
-					if (field.label) {
-						field.fieldLabel = '<label for="' + field.id + '">' + field.label + '</label>';
-					}
+						field.field.unshift('<div id="' + field.id + '">');
+						field.field.push('</div>');
 
-					if (!$.isArray(field.options) || field.options.length === 0) {
-						field.options = this.getDistinctValuesInColumn(field.columns, field.dataType, true);
-					}
+						field.field = field.field.join('');
+						break;
 
-					field.field = field.advanced.field + '<select id="' + field.id + '"';
-
-					if (field.multiple) {
-						field.field += ' multiple="multiple"';
-					}
-
-					field.field += '>';
-
-					if (!field.multiple) {
-						field.options.unshift({
-							value: '',
-							text: field.chosen ? '' : 'All'
-						});
-					}
-
-					for (i = 0; i < field.options.length; i++) {
-						if (typeof field.options[i] === 'object') {
-							field.field += '<option value="' + field.options[i].value + '">' + field.options[i].text + '</option>';
-						} else {
-							field.field += '<option value="' + field.options[i] + '">' + field.options[i] + '</option>';
-						}
-					}
-
-					field.field += '</select>';
-					break;
-
-				case 'switch':
-					if (!$.isArray(field.options) || field.options.length === 0) {
-						field.options = this.getDistinctValuesInColumn(field.columns, field.dataType, true);
-					}
-
-					for (i = 0; i < field.options.length; i++) {
-						if (typeof field.options[i] === 'object') {
-							field.field.push('<input type="checkbox" id="' + field.id + '_' + i + '" name="' + field.id + '"' + field.options[i].value + '>');
-							field.field.push('<label for="' + field.id + '_' + i + '">' + field.options[i].text + '</label>');
-						} else {
-							field.field.push('<input type="checkbox" id="' + field.id + '_' + i + '" name="' + field.id + '" value="' + field.options[i] + '">');
-							field.field.push('<label for="' + field.id + '_' + i + '">' + field.options[i] + '</label>');
-						}
-					}
-
-					field.field.unshift('<div id="' + field.id + '">');
-					field.field.push('</div>');
-
-					field.field = field.field.join('');
-					break;
-
-				default:
-					throw ('Warning: CustomSearch init failed due to invalid field type given - ' + field.type);
+					default:
+						throw ('Warning: CustomSearch init failed due to invalid field type given - ' + field.type);
 				}
 
 				field.fullField = '';
@@ -805,11 +841,20 @@
 				} else {
 					newLabel = {};
 					if (this.hasRange('min', range)) {
-						newLabel.min = 'Min ' + label;
+						if(label.hasOwnProperty('min') === false) {
+							newLabel.min = 'Min ' + label;
+						}
+						else {
+							newLabel.min = label.min;
+						}
 					}
-
 					if (this.hasRange('max', range)) {
-						newLabel.max = 'Max ' + label;
+						if(label.hasOwnProperty('max') === false) {
+							newLabel.max = 'Max ' + label;
+						}
+						else {
+							newLabel.max = label.max;
+						}
 					}
 				}
 
