@@ -110,6 +110,7 @@
 					field.type            = this.getType(field.type, field.columns);
 					field.dataType        = this.getDataType(field.columns);
 					field.range           = this.getRange(field.range);
+					field.dateFormat      = field.dateFormat;
 					field.slider          = field.slider === true && this.hasRange('min', field.range) && this.hasRange('max', field.range);
 					field.label           = this.getLabel(field.label, field.range, field.columns, field.slider);
 					field.id              = this.getId(i, field.range, field.field, field.slider);
@@ -330,7 +331,7 @@
 
 							if (field.type === 'date' && !advancedValue) {
 								for (j = 0; j < field.columns.length; j++) {
-									if (this.searchDate(data[field.columns[j]], value)) {
+									if (this.searchDate(data[field.columns[j]], value, field.dateformat)) {
 										pass = true;
 										break;
 									}
@@ -375,7 +376,7 @@
 							pass = false;
 							for (j = 0; j < field.columns.length; j++) {
 								if (field.type === 'date') {
-									if (this.searchDateRange(data[field.columns[j]], values)) {
+									if (this.searchDateRange(data[field.columns[j]], values, field.dateformat)) {
 										pass = true;
 										break;
 									}
@@ -470,17 +471,17 @@
 				);
 			},
 
-			searchDate: function (cell, value) {
-				cell = new Date(cell);
-				value = new Date(value);
+			searchDate: function (cell, value, dateFormat) {
+				cell = new Date(moment(value, dateFormat.source).format(dateFormat.target));
+				value = new Date(moment(cell, dateFormat.source).format(dateFormat.target));
 
 				return (this.isValidDate(cell) && cell.getDate() === value.getDate());
 			},
 
-			searchDateRange: function (cell, values) {
-				cell = new Date(cell);
-				values.min = new Date(values.min);
-				values.max = new Date(values.max);
+			searchDateRange: function (cell, values, dateFormat) {
+				cell = new Date(moment(cell, dateFormat.source).format(dateFormat.target));
+				values.min = new Date(moment(values.min, dateFormat.source).format(dateFormat.target));
+				values.max = new Date(moment(values.max, dateFormat.source).format(dateFormat.target));
 
 				if (!this.isValidDate(cell)) {
 					return false;
@@ -805,11 +806,20 @@
 				} else {
 					newLabel = {};
 					if (this.hasRange('min', range)) {
-						newLabel.min = 'Min ' + label;
+						if(label.hasOwnProperty('min') === false) {
+							newLabel.min = 'Min ' + label;
+						}
+						else {
+							newLabel.min = label.min;
+						}
 					}
-
 					if (this.hasRange('max', range)) {
-						newLabel.max = 'Max ' + label;
+						if(label.hasOwnProperty('max') === false) {
+							newLabel.max = 'Max ' + label;
+						}
+						else {
+							newLabel.max = label.max;
+						}
 					}
 				}
 
