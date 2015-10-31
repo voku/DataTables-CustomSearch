@@ -41,7 +41,7 @@
 
 
 			// Run constructor logic
-			$(table).on('init.dt', function () {
+			$(table).on('init.dt-custom-search', function () {
 				that.init(table, config);
 			});
 
