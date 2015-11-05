@@ -890,6 +890,10 @@
 						newDataType = 'number';
 					}
 				}
+				
+				if (newDataType === null) {
+					newDataType = 'string';	
+				}
 
 				return newDataType.toLowerCase();
 			},
